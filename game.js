@@ -1,53 +1,140 @@
 'use strict';
 
 /* =========================================================================
- *  ▍第一部分：集中配置区
- *  ▍所有数值均为明确的纯数值（无随机生成），可自由增删 / 精调
+ *  ▍配置区（调数值只需要改这一段，全部集中在文件最顶部）
  * ========================================================================= */
 
-/** 逻辑画布尺寸：3:4 竖屏（真实像素由 DPR 自适应放大） */
+/* -------------------------------------------------------------------------
+ *  一、画布与锚点
+ *  VIEW    : 逻辑画布尺寸（3:4 竖屏）
+ *  ANCHOR  : 绳子悬挂锚点（画布顶部正中间）
+ * ---------------------------------------------------------------------- */
 const VIEW = { width: 600, height: 800 };
-
-/** 绳子悬挂锚点：画布顶部正中间 */
 const ANCHOR = { x: 300, y: 76 };
 
-/** 绳子与矿镐的物理参数 */
+/* -------------------------------------------------------------------------
+ *  二、绳子外观与摆动、伸缩手感
+ *  width           : 绳子线宽 LineWidth（像素，越小越细）
+ *  minLength       : 收回终止长度 = 摆动时的绳长
+ *  maxLength       : 安全最大长度
+ *  angleLimit      : 摆动最大角度（度，相对竖直向下方向）
+ *  swingSpeed      : 摆动角速度（度 / 秒）
+ *  extendSpeed     : 发射伸长速度（像素 / 秒）
+ *  idleRetractSpeed: 空手收回速度（像素 / 秒）
+ * ---------------------------------------------------------------------- */
 const ROPE = {
-  minLength: 96,          // 收回终止长度（= 摆动时的绳长，需大于镐柄到镐头的距离）
-  maxLength: 1000,        // 安全最大长度
-  angleLimit: 68,         // 摆动最大角度（度，相对竖直向下方向）
-  swingSpeed: 84,         // 摆动角速度（度 / 秒）
-  extendSpeed: 900,       // 发射时伸长速度（像素 / 秒）
-  idleRetractSpeed: 950,  // 空手收回速度（像素 / 秒）
-  width: 4
+  width: 1,
+  minLength: 96,
+  maxLength: 1000,
+  angleLimit: 68,
+  swingSpeed: 84,
+  extendSpeed: 900,
+  idleRetractSpeed: 950
 };
 
-/** 矿镐参数 */
-const HOOK = {
-  hitRadius: 18           // 矿镐碰撞半径（与宝藏 size 相加做圆碰撞）
-};
-
-/**
- * 矿镐切图参数
- * width  : 矿镐在画布上的显示宽度（高度按原图比例自动换算）
- * buttX/Y : 镐柄末端（绳子连接点）在原图中的归一化坐标
- * headX/Y : 镐头中心（实际抓取点）在原图中的归一化坐标
- */
+/* -------------------------------------------------------------------------
+ *  三、矿镐外观（images/pickaxe.png）
+ *  width / height : 绘制宽高（像素，按原图比例等比缩小）
+ *  buttX / buttY  : 镐柄末端 = 绳子连接点（相对图片宽高的 0~1 比例）
+ *  headX / headY  : 镐头中心 = 实际抓取点（同上）
+ * ---------------------------------------------------------------------- */
 const PICKAXE_ART = {
   src: 'images/pickaxe.png',
-  width: 92,
+  width: 38,
+  height: 40,
   buttX: 0.24,
   buttY: 0.97,
   headX: 0.49,
   headY: 0.37
 };
 
-/** 三种梯度宝藏的切图与显示高度 */
-const TREASURE_ART = {
-  small: { src: 'images/treasure1.png', height: 34 },
-  medium: { src: 'images/stone2.png', height: 58 },
-  large: { src: 'images/stone1.png', height: 84 }
+/* -------------------------------------------------------------------------
+ *  四、矿镐碰撞判定半径（与宝藏的 hitRadius 相加后做圆碰撞）
+ * ---------------------------------------------------------------------- */
+const HOOK = { hitRadius: 18 };
+
+/* -------------------------------------------------------------------------
+ *  五、三种宝藏的基础属性
+ *  src           : 切图路径
+ *  value         : 拉回后加的分值
+ *  pullSpeed     : 抓住后的回收速度（像素 / 秒，越小越沉）
+ *  hitRadius     : 碰撞半径（像素）
+ *  displayHeight : 切图在画布上的显示高度（像素，宽度按原图比例）
+ * ---------------------------------------------------------------------- */
+const TREASURE_TYPES = {
+  small: {
+    src: 'images/treasure1.png',
+    value: 500,
+    pullSpeed: 900,
+    hitRadius: 15,
+    displayHeight: 34
+  },
+  medium: {
+    src: 'images/stone2.png',
+    value: 250,
+    pullSpeed: 520,
+    hitRadius: 24,
+    displayHeight: 58
+  },
+  large: {
+    src: 'images/stone1.png',
+    value: 100,
+    pullSpeed: 220,
+    hitRadius: 36,
+    displayHeight: 84
+  }
 };
+
+/* -------------------------------------------------------------------------
+ *  六、第一关宝藏分布（共 16 个，三层空间布局）
+ *  只改下面每条的 x / y 即可移动宝藏；grade 决定分值、回收速度与大小
+ *    上层（y 200~340）：6 个大型宝藏，挡住上面、分值最低
+ *    中层（y 445~555）：6 个中型宝藏，分值中等
+ *    底层（y 690~760）：4 个小型宝藏，最深处、分值最高
+ * ---------------------------------------------------------------------- */
+const LEVEL_1 = {
+  name: 'Chapter 1 · Mine Entrance',
+  treasures: [
+    // ---- 上层：大型宝藏（分值最低 / 回收最沉）----
+    { grade: 'large',  x: 150, y: 210 },
+    { grade: 'large',  x: 450, y: 210 },
+    { grade: 'large',  x:  75, y: 330 },
+    { grade: 'large',  x: 225, y: 330 },
+    { grade: 'large',  x: 375, y: 330 },
+    { grade: 'large',  x: 525, y: 330 },
+
+    // ---- 中层：中型宝藏（分值中等 / 回收适中）----
+    { grade: 'medium', x: 110, y: 445 },
+    { grade: 'medium', x: 300, y: 445 },
+    { grade: 'medium', x: 490, y: 445 },
+    { grade: 'medium', x:  70, y: 555 },
+    { grade: 'medium', x: 260, y: 555 },
+    { grade: 'medium', x: 450, y: 555 },
+
+    // ---- 底层：小型宝藏（分值最高 / 回收最快）----
+    { grade: 'small',  x: 100, y: 700 },
+    { grade: 'small',  x: 270, y: 720 },
+    { grade: 'small',  x: 430, y: 695 },
+    { grade: 'small',  x: 540, y: 745 }
+  ]
+};
+
+/* -------------------------------------------------------------------------
+ *  七、计时与运行时资源表（一般不需要改）
+ * ---------------------------------------------------------------------- */
+const TIME_LIMIT = 60;    // 本关限时（秒）
+const TIME_WARNING = 10;  // 剩余时间进入警戒的阈值（秒），HUD 变红
+
+/** 所有需要预加载的切图 */
+const ART_SOURCES = {
+  pickaxe: PICKAXE_ART.src,
+  small: TREASURE_TYPES.small.src,
+  medium: TREASURE_TYPES.medium.src,
+  large: TREASURE_TYPES.large.src
+};
+
+/** 已加载完成的图片：key -> HTMLImageElement */
+const ART = { pickaxe: null, small: null, medium: null, large: null };
 
 /** 图片加载失败时的占位色（保证任何情况下都不会出现空白） */
 const TREASURE_FALLBACK = {
@@ -55,57 +142,6 @@ const TREASURE_FALLBACK = {
   medium: '#53d3c6',
   large: '#a58cf6'
 };
-
-/** 所有需要预加载的切图 */
-const ART_SOURCES = {
-  pickaxe: PICKAXE_ART.src,
-  small: TREASURE_ART.small.src,
-  medium: TREASURE_ART.medium.src,
-  large: TREASURE_ART.large.src
-};
-
-/** 已加载完成的图片：key -> HTMLImageElement */
-const ART = { pickaxe: null, small: null, medium: null, large: null };
-
-/** 本关限时（秒） */
-const TIME_LIMIT = 60;
-
-/** 剩余时间进入警戒的阈值（秒），用于 HUD 变红 */
-const TIME_WARNING = 10;
-
-/**
- * 第一关关卡数据
- * 每个宝藏字段说明：
- *   grade     : 'small' | 'medium' | 'large'（决定切图、体积与回收手感）
- *   x, y      : 宝藏中心点坐标（逻辑画布 600 x 800）
- *   size      : 碰撞半径（像素）
- *   score     : 拉回后获得的分值
- *   pullSpeed : 抓住后绳子收回速度（像素 / 秒，越小越沉）
- */
-const LEVEL_1 = {
-  name: 'Chapter 1 · Mine Entrance',
-  treasures: [
-    // ---- 小型：分值低 / 体积小 / 收回极快 ----
-    { grade: 'small',  x: 200, y: 250, size: 15, score: 100, pullSpeed: 900 },
-    { grade: 'small',  x: 390, y: 255, size: 15, score: 100, pullSpeed: 900 },
-    { grade: 'small',  x:  95, y: 330, size: 15, score: 100, pullSpeed: 900 },
-    { grade: 'small',  x: 505, y: 340, size: 15, score: 100, pullSpeed: 900 },
-    { grade: 'small',  x: 330, y: 430, size: 15, score: 100, pullSpeed: 900 },
-    { grade: 'small',  x: 470, y: 470, size: 15, score: 100, pullSpeed: 900 },
-
-    // ---- 中型：分值中等 / 体积中等 / 收回适中 ----
-    { grade: 'medium', x: 155, y: 470, size: 24, score: 250, pullSpeed: 520 },
-    { grade: 'medium', x: 420, y: 570, size: 24, score: 250, pullSpeed: 520 },
-    { grade: 'medium', x: 240, y: 620, size: 24, score: 250, pullSpeed: 520 },
-    { grade: 'medium', x: 520, y: 620, size: 24, score: 250, pullSpeed: 520 },
-
-    // ---- 大型：分值高 / 体积大 / 收回极慢（沉重感）----
-    { grade: 'large',  x: 110, y: 710, size: 36, score: 500, pullSpeed: 220 },
-    { grade: 'large',  x: 300, y: 735, size: 36, score: 500, pullSpeed: 220 },
-    { grade: 'large',  x: 490, y: 710, size: 36, score: 500, pullSpeed: 220 }
-  ]
-};
-
 
 /* =========================================================================
  *  ▍第二部分：游戏状态与核心常量
@@ -115,7 +151,6 @@ const DEG = Math.PI / 180;
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
-const hintEl = document.getElementById('hint');
 const startScreenEl = document.getElementById('startScreen');
 const overScreenEl = document.getElementById('overScreen');
 const startBtnEl = document.getElementById('startBtn');
@@ -146,13 +181,14 @@ function resetLevel() {
   game.score = 0;
   game.popups = [];
   game.treasures = LEVEL_1.treasures.map(function (t) {
+    const type = TREASURE_TYPES[t.grade] || TREASURE_TYPES.small;
     return {
       grade: t.grade,
       x: t.x,
       y: t.y,
-      size: t.size,
-      score: t.score,
-      pullSpeed: t.pullSpeed,
+      hitRadius: type.hitRadius,
+      value: type.value,
+      pullSpeed: type.pullSpeed,
       grabbed: false
     };
   });
@@ -169,7 +205,6 @@ function startGame() {
 
   startScreenEl.classList.add('is-hidden');
   overScreenEl.classList.add('is-hidden');
-  if (hintEl) hintEl.classList.remove('is-hidden');
 
   startBtnEl.blur();
   againBtnEl.blur();
@@ -181,7 +216,6 @@ function endGame() {
 
   if (finalScoreEl) finalScoreEl.textContent = String(game.score);
   overScreenEl.classList.remove('is-hidden');
-  if (hintEl) hintEl.classList.add('is-hidden');
 }
 
 
@@ -202,7 +236,6 @@ function launch() {
   game.mode = 'extend';
   game.length = ROPE.minLength;
   game.retractSpeed = ROPE.idleRetractSpeed;
-  if (hintEl) hintEl.classList.add('is-hidden');
 }
 
 function findTreasureAt(x, y) {
@@ -211,7 +244,7 @@ function findTreasureAt(x, y) {
     if (t.grabbed) continue;
     const dx = t.x - x;
     const dy = t.y - y;
-    const reach = t.size + HOOK.hitRadius;
+    const reach = t.hitRadius + HOOK.hitRadius;
     if (dx * dx + dy * dy <= reach * reach) return t;
   }
   return null;
@@ -232,7 +265,7 @@ function collectTreasure() {
   game.carrying = null;
   if (!t) return;
 
-  game.score += t.score;
+  game.score += t.value;
 
   const idx = game.treasures.indexOf(t);
   if (idx !== -1) game.treasures.splice(idx, 1);
@@ -240,7 +273,7 @@ function collectTreasure() {
   game.popups.push({
     x: ANCHOR.x,
     y: ANCHOR.y + 26,
-    text: '+' + t.score,
+    text: '+' + t.value,
     life: 0.9,
     maxLife: 0.9
   });
@@ -355,7 +388,7 @@ function getPickaxeMetrics() {
   if (!img) return null;
 
   const dw = PICKAXE_ART.width;
-  const dh = dw * (img.height / img.width);
+  const dh = PICKAXE_ART.height;
   const buttX = PICKAXE_ART.buttX * dw;
   const buttY = PICKAXE_ART.buttY * dh;
   const headX = PICKAXE_ART.headX * dw;
@@ -385,9 +418,9 @@ function getRopeEnd(tip, metrics) {
 }
 
 function drawTreasure(t) {
-  const art = TREASURE_ART[t.grade] || TREASURE_ART.small;
+  const type = TREASURE_TYPES[t.grade] || TREASURE_TYPES.small;
   const img = ART[t.grade] || null;
-  const h = art.height;
+  const h = type.displayHeight;
   const w = img ? h * (img.width / img.height) : h;
 
   // 静置时的柔和投影（被抓起后取消）
@@ -463,7 +496,7 @@ function drawRope(tip) {
   ctx.moveTo(ANCHOR.x, ANCHOR.y);
   ctx.lineTo(end.x, end.y);
   ctx.strokeStyle = 'rgba(0, 0, 0, 0.55)';
-  ctx.lineWidth = ROPE.width + 3;
+  ctx.lineWidth = ROPE.width + 1.8;
   ctx.stroke();
 
   ctx.beginPath();
@@ -478,10 +511,10 @@ function drawRope(tip) {
 
   // 绳索高光
   ctx.beginPath();
-  ctx.moveTo(ANCHOR.x - 0.8, ANCHOR.y);
-  ctx.lineTo(end.x - 0.8, end.y);
-  ctx.strokeStyle = 'rgba(255, 214, 150, 0.35)';
-  ctx.lineWidth = 1.2;
+  ctx.moveTo(ANCHOR.x - 0.6, ANCHOR.y);
+  ctx.lineTo(end.x - 0.6, end.y);
+  ctx.strokeStyle = 'rgba(255, 214, 150, 0.28)';
+  ctx.lineWidth = 0.7;
   ctx.stroke();
 
   ctx.restore();
@@ -576,9 +609,13 @@ function drawHUD() {
   ctx.fillStyle = 'rgba(198, 214, 235, 0.72)';
   ctx.fillText(LEVEL_1.name, VIEW.width - 28, 44);
 
-  ctx.font = '500 13px "PingFang SC", "Helvetica Neue", system-ui, sans-serif';
-  ctx.fillStyle = 'rgba(150, 168, 192, 0.72)';
-  ctx.fillText('LEFT ' + game.treasures.length, VIEW.width - 28, 68);
+  // ---- 右上角操作提示（整局常驻，进入结算页后随 HUD 一起隐藏）----
+  ctx.font = '500 12px "PingFang SC", "Helvetica Neue", system-ui, sans-serif';
+  ctx.fillStyle = 'rgba(178, 194, 216, 0.82)';
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.75)';
+  ctx.shadowBlur = 5;
+  ctx.fillText('Click / Tap / Space to launch the pickaxe', VIEW.width - 28, 70);
+  ctx.shadowBlur = 0;
 
   ctx.restore();
 }

@@ -135,17 +135,6 @@ body {
   color: transparent;
 }
 
-.title-sub {
-  font-size: 0.42em;
-  font-weight: 700;
-  letter-spacing: 0.3em;
-  text-transform: uppercase;
-  background: linear-gradient(180deg, rgba(226, 238, 255, 0.95), rgba(140, 165, 200, 0.8));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
 .title-sm {
   font-size: clamp(21px, 4.4vmin, 38px);
 }
@@ -212,9 +201,9 @@ body {
 
 .btn-share {
   color: #e6edfb;
-  background: linear-gradient(180deg, rgba(88, 101, 242, 0.94), rgba(64, 76, 214, 0.94));
+  background: linear-gradient(180deg, rgba(134, 78, 185, 0.94), rgba(121, 64, 214, 0.94));
   border-color: rgba(160, 172, 255, 0.5);
-  box-shadow: 0 5px 0 rgba(38, 44, 132, 0.65), 0 12px 30px rgba(88, 101, 242, 0.22);
+  box-shadow: 0 5px 0 rgba(98, 38, 132, 0.65), 0 12px 30px rgba(88, 101, 242, 0.22);
 }
 
 .btn-share:hover {
@@ -228,31 +217,6 @@ body {
   justify-content: center;
   gap: clamp(8px, 1.5vmin, 16px);
   margin-top: clamp(2px, 0.8vmin, 8px);
-}
-
-/* =========================================================
- * 底部操作提示
- * ======================================================= */
-.hint {
-  position: absolute;
-  left: 50%;
-  bottom: 2.2%;
-  z-index: 4;
-  transform: translateX(-50%);
-  padding: 6px 14px;
-  border-radius: 999px;
-  font-size: clamp(9px, 1.45vmin, 13px);
-  letter-spacing: 0.04em;
-  color: rgba(226, 236, 248, 0.72);
-  background: rgba(8, 12, 20, 0.5);
-  border: 1px solid rgba(255, 214, 140, 0.16);
-  white-space: nowrap;
-  pointer-events: none;
-  transition: opacity 0.4s ease;
-}
-
-.hint.is-hidden {
-  opacity: 0;
 }
 
 /* 竖屏手机 / 窄屏时贴合屏幕边缘 */
