@@ -71,7 +71,7 @@ const TREASURE_TYPES = {
   },
   medium: {
     src: 'images/stone2.png',
-    value: 250,
+    value: 200,
     pullSpeed: 520,
     hitRadius: 24,
     displayHeight: 58
@@ -79,50 +79,96 @@ const TREASURE_TYPES = {
   large: {
     src: 'images/stone1.png',
     value: 100,
-    pullSpeed: 220,
+    pullSpeed: 110,
     hitRadius: 36,
     displayHeight: 84
+  },
+  huge: {
+    src: 'images/treasure2.png',
+    value: 1000,
+    pullSpeed: 320,
+    hitRadius: 44,
+    displayHeight: 104
   }
 };
 
 /* -------------------------------------------------------------------------
- *  六、第一关宝藏分布（共 16 个，三层空间布局）
- *  只改下面每条的 x / y 即可移动宝藏；grade 决定分值、回收速度与大小
- *    上层（y 200~340）：6 个大型宝藏，挡住上面、分值最低
- *    中层（y 445~555）：6 个中型宝藏，分值中等
- *    底层（y 690~760）：4 个小型宝藏，最深处、分值最高
+ *  六、关卡数据
+ *  name      : 右上角 HUD 显示的关卡名
+ *  timeLimit : 本关限时（秒）
+ *  target    : 通关目标分值（第二关无目标，填 0）
+ *  treasures : 宝藏列表，只改 x / y 即可移动宝藏
  * ---------------------------------------------------------------------- */
+
+/* ===== 第一关：18 个宝藏（8 大 + 6 中 + 4 小），目标 1,000 分 ===== */
 const LEVEL_1 = {
-  name: 'Chapter 1 · Mine Entrance',
+  name: 'Chapter 1 - Target: 1,000',
+  timeLimit: 60,
+  target: 1000,
   treasures: [
-    // ---- 上层：大型宝藏（分值最低 / 回收最沉）----
-    { grade: 'large',  x: 150, y: 210 },
-    { grade: 'large',  x: 450, y: 210 },
-    { grade: 'large',  x:  75, y: 330 },
-    { grade: 'large',  x: 225, y: 330 },
-    { grade: 'large',  x: 375, y: 330 },
-    { grade: 'large',  x: 525, y: 330 },
+    // ---- 上半区：大型宝藏 ×8（分值最低 / 回收最沉）----
+    { grade: 'large',  x:  85, y: 345 },
+    { grade: 'large',  x: 225, y: 400 },
+    { grade: 'large',  x: 365, y: 400 },
+    { grade: 'large',  x: 505, y: 345 },
+    { grade: 'large',  x: 125, y: 500 },
+    { grade: 'large',  x: 295, y: 600 },
+    { grade: 'large',  x: 435, y: 550 },
+    { grade: 'large',  x: 545, y: 465 },
 
-    // ---- 中层：中型宝藏（分值中等 / 回收适中）----
-    { grade: 'medium', x: 110, y: 445 },
-    { grade: 'medium', x: 300, y: 445 },
-    { grade: 'medium', x: 490, y: 445 },
-    { grade: 'medium', x:  70, y: 555 },
-    { grade: 'medium', x: 260, y: 555 },
-    { grade: 'medium', x: 450, y: 555 },
+    // ---- 中层：中型宝藏 ×6（分值 200 / 回收适中）----
+    { grade: 'medium', x: 150, y: 590 },
+    { grade: 'medium', x: 300, y: 475 },
+    { grade: 'medium', x: 500, y: 590 },
+    { grade: 'medium', x:  70, y: 420 },
+    { grade: 'medium', x: 260, y: 710 },
+    { grade: 'medium', x: 450, y: 710 },
 
-    // ---- 底层：小型宝藏（分值最高 / 回收最快）----
-    { grade: 'small',  x: 100, y: 700 },
-    { grade: 'small',  x: 270, y: 720 },
-    { grade: 'small',  x: 430, y: 695 },
-    { grade: 'small',  x: 540, y: 745 }
+    // ---- 底层：小型宝藏 ×4（分值最高 / 回收最快）----
+    { grade: 'small',  x: 220, y: 490 },
+    { grade: 'small',  x: 230, y: 670 },
+    { grade: 'small',  x: 400, y: 675 },
+    { grade: 'small',  x: 435, y: 440 }
   ]
 };
 
+/* ===== 第二关：16 个宝藏（10 大 + 4 小 + 2 特大），限时 90 秒 ===== */
+const LEVEL_2 = {
+  name: 'Chapter 2 - Deep Vault',
+  timeLimit: 90,
+  target: 0,
+  treasures: [
+    // ---- 大型石头 ×10：穿插占据偏上与中部（主要障碍）----
+    { grade: 'large', x: 120, y: 290 },
+    { grade: 'large', x: 240, y: 320 },
+    { grade: 'large', x: 360, y: 320 },
+    { grade: 'large', x: 480, y: 290 },
+    { grade: 'large', x:  90, y: 450 },
+    { grade: 'large', x: 210, y: 480 },
+    { grade: 'large', x: 390, y: 480 },
+    { grade: 'large', x: 510, y: 450 },
+    { grade: 'large', x: 150, y: 600 },
+    { grade: 'large', x: 450, y: 600 },
+
+    // ---- 小型宝藏 ×4：藏在大型石头的缝隙里（高分）----
+    { grade: 'small', x: 300, y: 395 },
+    { grade: 'small', x: 150, y: 500 },
+    { grade: 'small', x: 450, y: 500 },
+    { grade: 'small', x: 300, y: 585 },
+
+    // ---- 特大型宝藏 ×2（treasure2）：地图最底部最深处，全场最高价值 ----
+    { grade: 'huge',  x: 150, y: 730 },
+    { grade: 'huge',  x: 450, y: 730 }
+  ]
+};
+
+/** 关卡列表：索引 0 = 第一关，索引 1 = 第二关 */
+const LEVELS = [LEVEL_1, LEVEL_2];
+
 /* -------------------------------------------------------------------------
- *  七、计时与运行时资源表（一般不需要改）
+ *  七、计时警戒与运行时资源表（一般不需要改）
+ *  （每关限时请看上面 LEVEL_1.timeLimit / LEVEL_2.timeLimit）
  * ---------------------------------------------------------------------- */
-const TIME_LIMIT = 60;    // 本关限时（秒）
 const TIME_WARNING = 10;  // 剩余时间进入警戒的阈值（秒），HUD 变红
 
 /** 所有需要预加载的切图 */
@@ -130,17 +176,19 @@ const ART_SOURCES = {
   pickaxe: PICKAXE_ART.src,
   small: TREASURE_TYPES.small.src,
   medium: TREASURE_TYPES.medium.src,
-  large: TREASURE_TYPES.large.src
+  large: TREASURE_TYPES.large.src,
+  huge: TREASURE_TYPES.huge.src
 };
 
 /** 已加载完成的图片：key -> HTMLImageElement */
-const ART = { pickaxe: null, small: null, medium: null, large: null };
+const ART = { pickaxe: null, small: null, medium: null, large: null, huge: null };
 
 /** 图片加载失败时的占位色（保证任何情况下都不会出现空白） */
 const TREASURE_FALLBACK = {
   small: '#ffd451',
   medium: '#53d3c6',
-  large: '#a58cf6'
+  large: '#a58cf6',
+  huge: '#ffb347'
 };
 
 /* =========================================================================
@@ -154,12 +202,22 @@ const ctx = canvas.getContext('2d');
 const startScreenEl = document.getElementById('startScreen');
 const overScreenEl = document.getElementById('overScreen');
 const startBtnEl = document.getElementById('startBtn');
+const retryBtnEl = document.getElementById('retryBtn');
+const nextBtnEl = document.getElementById('nextBtn');
 const againBtnEl = document.getElementById('againBtn');
-const finalScoreEl = document.getElementById('finalScore');
+const shareBtnEl = document.getElementById('shareBtn');
+const overEyebrowEl = document.getElementById('overEyebrow');
+const overTitleEl = document.getElementById('overTitle');
+const overScoreEl = document.getElementById('overScore');
+const overDetailEl = document.getElementById('overDetail');
+const overNoteEl = document.getElementById('overNote');
 
 const game = {
   state: 'start',                       // 界面状态：'start' | 'playing' | 'over'
-  timeLeft: TIME_LIMIT,                 // 剩余时间（秒）
+  levelIndex: 0,                        // 当前关卡索引：0 = 第一关，1 = 第二关
+  level: LEVELS[0],                     // 当前关卡配置对象
+  totalScore: 0,                        // 第一关成绩（第二关终极结算时累计）
+  timeLeft: LEVELS[0].timeLimit,        // 剩余时间（秒）
   mode: 'swing',                        // 'swing' | 'extend' | 'retract'
   angle: -ROPE.angleLimit * DEG,        // 绳子与竖直方向夹角（弧度）
   dir: 1,                               // 摆动方向：1 向右，-1 向左
@@ -171,7 +229,8 @@ const game = {
   popups: []
 };
 
-function resetLevel() {
+function resetLevel(level) {
+  game.level = level;
   game.mode = 'swing';
   game.angle = -ROPE.angleLimit * DEG;
   game.dir = 1;
@@ -180,7 +239,7 @@ function resetLevel() {
   game.carrying = null;
   game.score = 0;
   game.popups = [];
-  game.treasures = LEVEL_1.treasures.map(function (t) {
+  game.treasures = level.treasures.map(function (t) {
     const type = TREASURE_TYPES[t.grade] || TREASURE_TYPES.small;
     return {
       grade: t.grade,
@@ -195,27 +254,94 @@ function resetLevel() {
 }
 
 /* =========================================================================
- *  ▍界面状态切换：开始界面 -> 游戏 -> 结算界面 -> 重新开始
+ *  ▍界面状态切换：开始界面 -> 关卡 -> 结算界面 -> 下一关 / 重来
  * ========================================================================= */
 
-function startGame() {
-  resetLevel();
-  game.timeLeft = TIME_LIMIT;
+function formatNumber(n) {
+  return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+function startGame(levelIndex) {
+  const idx = levelIndex === 1 ? 1 : 0;
+
+  game.levelIndex = idx;
+  if (idx === 0) game.totalScore = 0;
+
+  resetLevel(LEVELS[idx]);
+  game.timeLeft = LEVELS[idx].timeLimit;
   game.state = 'playing';
 
   startScreenEl.classList.add('is-hidden');
   overScreenEl.classList.add('is-hidden');
 
   startBtnEl.blur();
+  retryBtnEl.blur();
+  nextBtnEl.blur();
   againBtnEl.blur();
+}
+
+/** 按当前关卡与得分，填充并展示对应的结算面板 */
+function showResult(opts) {
+  overEyebrowEl.textContent = opts.eyebrow;
+  overTitleEl.textContent = opts.title;
+  overScoreEl.textContent = formatNumber(opts.score);
+  overDetailEl.textContent = opts.detail;
+  overNoteEl.textContent = opts.note;
+
+  retryBtnEl.hidden = !opts.showRetry;
+  nextBtnEl.hidden = !opts.showNext;
+  againBtnEl.hidden = !opts.showAgain;
+  shareBtnEl.hidden = !opts.showShare;
+
+  overScreenEl.classList.remove('is-hidden');
 }
 
 function endGame() {
   game.state = 'over';
   game.timeLeft = 0;
 
-  if (finalScoreEl) finalScoreEl.textContent = String(game.score);
-  overScreenEl.classList.remove('is-hidden');
+  const level = game.level;
+
+  if (game.levelIndex === 0) {
+    // 第一关：按目标分判定胜负
+    game.totalScore = game.score;
+
+    if (game.score >= level.target) {
+      showResult({
+        eyebrow: 'Chapter 1 Complete',
+        title: 'Target Cleared!',
+        score: game.score,
+        detail: 'Target ' + formatNumber(level.target) + ' \u00b7 Reached',
+        note: 'The deep vault is open. Continue to Chapter 2 for the final haul.',
+        showNext: true
+      });
+    } else {
+      showResult({
+        eyebrow: 'Chapter 1 Complete',
+        title: 'Challenge Failed',
+        score: game.score,
+        detail:
+          'Target ' + formatNumber(level.target) +
+          ' \u00b7 Short by ' + formatNumber(level.target - game.score),
+        note: 'Mine faster and go for the deep high-value treasures to reach the target.',
+        showRetry: true
+      });
+    }
+    return;
+  }
+
+  // 第二关：终极结算（累计两关总价值）
+  showResult({
+    eyebrow: 'Shift Complete',
+    title: "Time's Up!",
+    score: game.totalScore + game.score,
+    detail:
+      'Chapter 1 ' + formatNumber(game.totalScore) +
+      ' \u00b7 Chapter 2 ' + formatNumber(game.score),
+    note: 'Take a screenshot and share your success through the button below.',
+    showShare: true,
+    showAgain: true
+  });
 }
 
 
@@ -607,7 +733,7 @@ function drawHUD() {
   ctx.textAlign = 'right';
   ctx.font = '600 15px "PingFang SC", "Helvetica Neue", system-ui, sans-serif';
   ctx.fillStyle = 'rgba(198, 214, 235, 0.72)';
-  ctx.fillText(LEVEL_1.name, VIEW.width - 28, 44);
+  ctx.fillText(game.level.name, VIEW.width - 28, 44);
 
   // ---- 右上角操作提示（整局常驻，进入结算页后随 HUD 一起隐藏）----
   ctx.font = '500 12px "PingFang SC", "Helvetica Neue", system-ui, sans-serif';
@@ -746,9 +872,11 @@ function bindInput() {
   window.addEventListener('resize', resizeCanvas);
   window.addEventListener('orientationchange', resizeCanvas);
 
-  // 开始 / 重新开始按钮
-  startBtnEl.addEventListener('click', startGame);
-  againBtnEl.addEventListener('click', startGame);
+  // 开始 / 重来 / 下一关 按钮
+  startBtnEl.addEventListener('click', function () { startGame(0); });
+  retryBtnEl.addEventListener('click', function () { startGame(0); });
+  nextBtnEl.addEventListener('click', function () { startGame(1); });
+  againBtnEl.addEventListener('click', function () { startGame(0); });
 
   // 切到后台时避免 dt 累积
   document.addEventListener('visibilitychange', function () {
@@ -766,6 +894,6 @@ preloadArt(function () {
 });
 
 resizeCanvas();
-resetLevel();
+resetLevel(LEVELS[0]);
 bindInput();
 window.requestAnimationFrame(loop);

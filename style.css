@@ -151,6 +151,13 @@ body {
   color: #ffd98a;
 }
 
+.result-sub {
+  font-size: clamp(10px, 1.6vmin, 15px);
+  font-weight: 500;
+  color: rgba(178, 194, 216, 0.86);
+  letter-spacing: 0.02em;
+}
+
 .footnote {
   max-width: 30em;
   font-size: clamp(10px, 1.5vmin, 14px);
@@ -179,6 +186,10 @@ body {
 
 .btn:active {
   transform: translateY(2px) scale(0.98);
+}
+
+.btn[hidden] {
+  display: none;
 }
 
 .btn[disabled] {

@@ -27,13 +27,14 @@
       </div>
     </div>
 
-    <!-- ===================== 结算界面 ===================== -->
+    <!-- ===================== 结算界面（第一关胜负分支 / 第二关终极结算） ===================== -->
     <div class="overlay is-hidden" id="overScreen">
       <div class="panel">
-        <p class="eyebrow">Shift Complete</p>
-        <h2 class="title title-sm">Time's Up!</h2>
-        <p class="result">Total Treasure Value: <span id="finalScore">0</span></p>
-        <p class="footnote">
+        <p class="eyebrow" id="overEyebrow">Shift Complete</p>
+        <h2 class="title title-sm" id="overTitle">Time's Up!</h2>
+        <p class="result">Total Treasure Value: <span id="overScore">0</span></p>
+        <p class="result result-sub" id="overDetail">Target 1,000</p>
+        <p class="footnote" id="overNote">
           Take a screenshot and share your success through the button below.
         </p>
         <div class="btn-row">
@@ -43,8 +44,11 @@
             href="https://discord.gg/placeholder"
             target="_blank"
             rel="noopener noreferrer"
+            hidden
           >Share to Discord</a>
-          <button class="btn btn-primary" id="againBtn" type="button">Play Again</button>
+          <button class="btn btn-primary" id="retryBtn" type="button" hidden>Try Again</button>
+          <button class="btn btn-primary" id="nextBtn" type="button" hidden>Next Chapter</button>
+          <button class="btn btn-primary" id="againBtn" type="button" hidden>Play Again</button>
         </div>
       </div>
     </div>
