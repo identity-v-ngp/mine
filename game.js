@@ -203,7 +203,6 @@ const LEVEL_3 = {
     { grade: 'small',  x: 150, y: 675 },
     { grade: 'small',  x: 300, y: 675 },
     { grade: 'small',  x: 450, y: 675 },
-    { grade: 'small',  x: 300, y: 240 },
 
     // ---- 终极神秘宝藏 ×1（treasure3）：地图最底部正中央，全场唯一最高价值 ----
     { grade: 'ultimate', x: 300, y: 750 }
