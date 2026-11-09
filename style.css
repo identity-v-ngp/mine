@@ -212,9 +212,9 @@ body {
 
 .btn-share {
   color: #e6edfb;
-  background: linear-gradient(180deg, rgba(134, 78, 185, 0.94), rgba(121, 64, 214, 0.94));
+  background: linear-gradient(180deg, rgba(142, 93, 187, 0.94), rgba(135, 90, 207, 0.94));
   border-color: rgba(160, 172, 255, 0.5);
-  box-shadow: 0 5px 0 rgba(98, 38, 132, 0.65), 0 12px 30px rgba(88, 101, 242, 0.22);
+  box-shadow: 0 5px 0 rgba(163, 115, 190, 0.65), 0 12px 30px rgba(88, 101, 242, 0.22);
 }
 
 .btn-share:hover {

@@ -86,9 +86,16 @@ const TREASURE_TYPES = {
   huge: {
     src: 'images/treasure2.png',
     value: 1000,
-    pullSpeed: 320,
-    hitRadius: 44,
-    displayHeight: 104
+    pullSpeed: 160,
+    hitRadius: 39,
+    displayHeight: 88
+  },
+  ultimate: {
+    src: 'images/treasure3.png',
+    value: 3000,
+    pullSpeed: 420,
+    hitRadius: 16,
+    displayHeight: 36
   }
 };
 
@@ -96,7 +103,7 @@ const TREASURE_TYPES = {
  *  六、关卡数据
  *  name      : 右上角 HUD 显示的关卡名
  *  timeLimit : 本关限时（秒）
- *  target    : 通关目标分值（第二关无目标，填 0）
+ *  target    : 本关通关目标分值（得分 >= target 视为通关）
  *  treasures : 宝藏列表，只改 x / y 即可移动宝藏
  * ---------------------------------------------------------------------- */
 
@@ -132,11 +139,11 @@ const LEVEL_1 = {
   ]
 };
 
-/* ===== 第二关：16 个宝藏（10 大 + 4 小 + 2 特大），限时 90 秒 ===== */
+/* ===== 第二关：16 个宝藏（10 大 + 4 小 + 2 特大），目标 3,000 分 ===== */
 const LEVEL_2 = {
-  name: 'Chapter 2 - Deep Vault',
+  name: 'Chapter 2 - Target: 3,000',
   timeLimit: 90,
-  target: 0,
+  target: 3000,
   treasures: [
     // ---- 大型石头 ×10：穿插占据偏上与中部（主要障碍）----
     { grade: 'large', x: 120, y: 290 },
@@ -156,18 +163,59 @@ const LEVEL_2 = {
     { grade: 'small', x: 450, y: 500 },
     { grade: 'small', x: 300, y: 585 },
 
-    // ---- 特大型宝藏 ×2（treasure2）：地图最底部最深处，全场最高价值 ----
+    // ---- 特大型宝藏 ×2（treasure2）：地图最底部最深处，高价值重物 ----
     { grade: 'huge',  x: 150, y: 730 },
     { grade: 'huge',  x: 450, y: 730 }
   ]
 };
 
-/** 关卡列表：索引 0 = 第一关，索引 1 = 第二关 */
-const LEVELS = [LEVEL_1, LEVEL_2];
+/* ===== 第三关：25 个宝藏（10 大 + 8 中 + 6 小 + 1 终极），目标 5,000 分 ===== */
+const LEVEL_3 = {
+  name: 'Chapter 3 - Target: 5,000',
+  timeLimit: 90,
+  target: 5000,
+  treasures: [
+    // ---- 大石障碍 ×10：均匀铺在中上层 ----
+    { grade: 'large',  x: 110, y: 220 },
+    { grade: 'large',  x: 300, y: 230 },
+    { grade: 'large',  x: 490, y: 220 },
+    { grade: 'large',  x: 200, y: 340 },
+    { grade: 'large',  x: 400, y: 340 },
+    { grade: 'large',  x: 110, y: 460 },
+    { grade: 'large',  x: 300, y: 460 },
+    { grade: 'large',  x: 490, y: 460 },
+    { grade: 'large',  x: 200, y: 580 },
+    { grade: 'large',  x: 400, y: 580 },
+
+    // ---- 中型宝藏 ×8：夹在大石缝隙中 ----
+    { grade: 'medium', x: 200, y: 220 },
+    { grade: 'medium', x: 400, y: 220 },
+    { grade: 'medium', x: 110, y: 340 },
+    { grade: 'medium', x: 300, y: 340 },
+    { grade: 'medium', x: 490, y: 340 },
+    { grade: 'medium', x: 200, y: 460 },
+    { grade: 'medium', x: 400, y: 460 },
+    { grade: 'medium', x: 300, y: 580 },
+
+    // ---- 小型宝藏 ×6：藏在石阵深处的狭窄通道 ----
+    { grade: 'small',  x: 110, y: 560 },
+    { grade: 'small',  x: 490, y: 560 },
+    { grade: 'small',  x: 150, y: 675 },
+    { grade: 'small',  x: 300, y: 675 },
+    { grade: 'small',  x: 450, y: 675 },
+    { grade: 'small',  x: 300, y: 240 },
+
+    // ---- 终极神秘宝藏 ×1（treasure3）：地图最底部正中央，全场唯一最高价值 ----
+    { grade: 'ultimate', x: 300, y: 750 }
+  ]
+};
+
+/** 关卡列表：索引 0/1/2 = 第一/二/三关 */
+const LEVELS = [LEVEL_1, LEVEL_2, LEVEL_3];
 
 /* -------------------------------------------------------------------------
  *  七、计时警戒与运行时资源表（一般不需要改）
- *  （每关限时请看上面 LEVEL_1.timeLimit / LEVEL_2.timeLimit）
+ *  （每关限时请看上面 LEVEL_1 / LEVEL_2 / LEVEL_3 的 timeLimit）
  * ---------------------------------------------------------------------- */
 const TIME_WARNING = 10;  // 剩余时间进入警戒的阈值（秒），HUD 变红
 
@@ -177,18 +225,20 @@ const ART_SOURCES = {
   small: TREASURE_TYPES.small.src,
   medium: TREASURE_TYPES.medium.src,
   large: TREASURE_TYPES.large.src,
-  huge: TREASURE_TYPES.huge.src
+  huge: TREASURE_TYPES.huge.src,
+  ultimate: TREASURE_TYPES.ultimate.src
 };
 
 /** 已加载完成的图片：key -> HTMLImageElement */
-const ART = { pickaxe: null, small: null, medium: null, large: null, huge: null };
+const ART = { pickaxe: null, small: null, medium: null, large: null, huge: null, ultimate: null };
 
 /** 图片加载失败时的占位色（保证任何情况下都不会出现空白） */
 const TREASURE_FALLBACK = {
   small: '#ffd451',
   medium: '#53d3c6',
   large: '#a58cf6',
-  huge: '#ffb347'
+  huge: '#ffb347',
+  ultimate: '#ffe066'
 };
 
 /* =========================================================================
@@ -214,9 +264,9 @@ const overNoteEl = document.getElementById('overNote');
 
 const game = {
   state: 'start',                       // 界面状态：'start' | 'playing' | 'over'
-  levelIndex: 0,                        // 当前关卡索引：0 = 第一关，1 = 第二关
+  levelIndex: 0,                        // 当前关卡索引：0/1/2 = 第一/二/三关
   level: LEVELS[0],                     // 当前关卡配置对象
-  totalScore: 0,                        // 第一关成绩（第二关终极结算时累计）
+  chapterScores: [],                    // 各关成绩（终极结算时汇总）
   timeLeft: LEVELS[0].timeLimit,        // 剩余时间（秒）
   mode: 'swing',                        // 'swing' | 'extend' | 'retract'
   angle: -ROPE.angleLimit * DEG,        // 绳子与竖直方向夹角（弧度）
@@ -262,10 +312,11 @@ function formatNumber(n) {
 }
 
 function startGame(levelIndex) {
-  const idx = levelIndex === 1 ? 1 : 0;
+  const idx = Math.max(0, Math.min(Math.round(levelIndex) || 0, LEVELS.length - 1));
 
   game.levelIndex = idx;
-  if (idx === 0) game.totalScore = 0;
+  // 从第一关重新开始时，清空历史关卡成绩
+  if (idx === 0) game.chapterScores = [];
 
   resetLevel(LEVELS[idx]);
   game.timeLeft = LEVELS[idx].timeLimit;
@@ -296,52 +347,87 @@ function showResult(opts) {
   overScreenEl.classList.remove('is-hidden');
 }
 
+/** 汇总所有已完成关卡的成绩 */
+function sumChapterScores() {
+  let total = 0;
+  for (let i = 0; i < game.chapterScores.length; i++) {
+    total += game.chapterScores[i] || 0;
+  }
+  return total;
+}
+
+/** 生成 "Ch1 1,200 · Ch2 3,100 · Ch3 5,200" 形式的分关明细 */
+function chapterBreakdown() {
+  const parts = [];
+  for (let i = 0; i < game.chapterScores.length; i++) {
+    parts.push('Ch' + (i + 1) + ' ' + formatNumber(game.chapterScores[i] || 0));
+  }
+  return parts.join(' \u00b7 ');
+}
+
 function endGame() {
   game.state = 'over';
   game.timeLeft = 0;
 
   const level = game.level;
+  const idx = game.levelIndex;
+  const isFinalChapter = idx === LEVELS.length - 1;
+  const passed = game.score >= level.target;
+  const chapterLabel = 'Chapter ' + (idx + 1) + ' Complete';
 
-  if (game.levelIndex === 0) {
-    // 第一关：按目标分判定胜负
-    game.totalScore = game.score;
+  game.chapterScores[idx] = game.score;
 
-    if (game.score >= level.target) {
+  // ---- 最后一关：达成目标进入终极结算，否则重来本关 ----
+  if (isFinalChapter) {
+    if (!passed) {
       showResult({
-        eyebrow: 'Chapter 1 Complete',
-        title: 'Target Cleared!',
-        score: game.score,
-        detail: 'Target ' + formatNumber(level.target) + ' \u00b7 Reached',
-        note: 'The deep vault is open. Continue to Chapter 2 for the final haul.',
-        showNext: true
-      });
-    } else {
-      showResult({
-        eyebrow: 'Chapter 1 Complete',
+        eyebrow: chapterLabel,
         title: 'Challenge Failed',
         score: game.score,
         detail:
           'Target ' + formatNumber(level.target) +
           ' \u00b7 Short by ' + formatNumber(level.target - game.score),
-        note: 'Mine faster and go for the deep high-value treasures to reach the target.',
+        note: 'The final vault is still sealed. Try again for the ' +
+          formatNumber(level.target) + ' target.',
         showRetry: true
       });
+      return;
     }
+
+    showResult({
+      eyebrow: 'All Chapters Cleared',
+      title: 'Victory!',
+      score: sumChapterScores(),
+      detail: chapterBreakdown(),
+      note: 'Take a screenshot and share your success through the button below.',
+      showShare: true,
+      showAgain: true
+    });
     return;
   }
 
-  // 第二关：终极结算（累计两关总价值）
-  showResult({
-    eyebrow: 'Shift Complete',
-    title: "Time's Up!",
-    score: game.totalScore + game.score,
-    detail:
-      'Chapter 1 ' + formatNumber(game.totalScore) +
-      ' \u00b7 Chapter 2 ' + formatNumber(game.score),
-    note: 'Take a screenshot and share your success through the button below.',
-    showShare: true,
-    showAgain: true
-  });
+  // ---- 前两关：达成目标进入下一关，否则重来本关 ----
+  if (passed) {
+    showResult({
+      eyebrow: chapterLabel,
+      title: 'Target Cleared!',
+      score: game.score,
+      detail: 'Target ' + formatNumber(level.target) + ' \u00b7 Reached',
+      note: 'Chapter ' + (idx + 2) + ' awaits. Keep mining.',
+      showNext: true
+    });
+  } else {
+    showResult({
+      eyebrow: chapterLabel,
+      title: 'Challenge Failed',
+      score: game.score,
+      detail:
+        'Target ' + formatNumber(level.target) +
+        ' \u00b7 Short by ' + formatNumber(level.target - game.score),
+      note: 'Mine faster and go for the deep high-value treasures to reach the target.',
+      showRetry: true
+    });
+  }
 }
 
 
@@ -872,10 +958,10 @@ function bindInput() {
   window.addEventListener('resize', resizeCanvas);
   window.addEventListener('orientationchange', resizeCanvas);
 
-  // 开始 / 重来 / 下一关 按钮
+  // 开始 / 重打本关 / 下一关 / 从头再来
   startBtnEl.addEventListener('click', function () { startGame(0); });
-  retryBtnEl.addEventListener('click', function () { startGame(0); });
-  nextBtnEl.addEventListener('click', function () { startGame(1); });
+  retryBtnEl.addEventListener('click', function () { startGame(game.levelIndex); });
+  nextBtnEl.addEventListener('click', function () { startGame(game.levelIndex + 1); });
   againBtnEl.addEventListener('click', function () { startGame(0); });
 
   // 切到后台时避免 dt 累积
