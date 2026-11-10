@@ -125,6 +125,7 @@ body {
   flex-direction: column;
   align-items: center;
   gap: clamp(2px, 0.6vmin, 8px);
+  max-width: 100%;
   font-size: clamp(23px, 5vmin, 44px);
   font-weight: 800;
   line-height: 1.08;
@@ -163,6 +164,30 @@ body {
   font-size: clamp(10px, 1.5vmin, 14px);
   line-height: 1.7;
   color: rgba(186, 202, 224, 0.74);
+}
+
+/* Discord 身份展示（开始界面） */
+.player-line {
+  max-width: 100%;
+  font-size: clamp(10px, 1.55vmin, 14px);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: rgba(255, 213, 138, 0.9);
+  word-break: break-all;
+}
+
+/* 分享后的频道快捷跳转 */
+.channel-link {
+  font-size: clamp(10px, 1.5vmin, 14px);
+  font-weight: 600;
+  color: rgba(160, 176, 255, 0.95);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.2s ease;
+}
+
+.channel-link:hover {
+  color: #c3ccff;
 }
 
 /* ---------- 按钮 ---------- */

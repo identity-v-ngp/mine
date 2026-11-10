@@ -289,6 +289,34 @@ const TREASURE_FALLBACK = {
   ultimate: '#ffe066'
 };
 
+/* -------------------------------------------------------------------------
+ *  九、Discord 集成配置（OAuth2 隐式授权登录 + 通关 Webhook 推送）
+ *  DISCORD_CLIENT_ID     : OAuth2 应用 Client ID
+ *  DISCORD_REDIRECT_URI  : 授权回调地址（必须与 Discord 后台配置一致）
+ *  DISCORD_WEBHOOK_URL   : 通关战报推送的 Webhook
+ *  DISCORD_CHANNEL_URL   : 分享成功后的频道跳转地址
+ *  DISCORD_SHARE_IMAGE   : 战报卡片图片
+ * ---------------------------------------------------------------------- */
+const DISCORD_CLIENT_ID = '1569624792594653204';
+const DISCORD_REDIRECT_URI = 'https://identity-v-ngp.github.io/mine/';
+const DISCORD_WEBHOOK_URL =
+  'https://discord.com/api/webhooks/1569621677338402866/7OZ2ajXsABkSAisIM4X0sjLrZxrzoVr8xip15bTrKEUsxRymv3OyM8SbIXPL0wgpK8Fb';
+const DISCORD_CHANNEL_URL =
+  'https://discord.com/channels/611028792911200256/1569619127012827146';
+const DISCORD_SHARE_IMAGE =
+  'https://cdn.discordapp.com/attachments/1286509730264776734/1569620630578397254/card.jpg?ex=6af41ea0&is=6af2cd20&hm=7af1b6631d8f479768ed5c671d8707f30c1a9163d3b2de03d4bc86849b6393ec&';
+
+/** 隐式授权地址（response_type=token，无需 client secret） */
+const DISCORD_AUTH_URL =
+  'https://discord.com/oauth2/authorize?client_id=' + DISCORD_CLIENT_ID +
+  '&response_type=token&scope=identify&redirect_uri=' + encodeURIComponent(DISCORD_REDIRECT_URI);
+
+/** 玩家信息缓存 key 与游客兜底身份 */
+const PLAYER_STORAGE_KEY = 'ngpMinerPlayer';
+const PLAYER_AUTH_FLAG_KEY = 'ngpMinerAuthTried';
+const PLAYER_FALLBACK_NAME = 'Adventurer';
+const PLAYER_FALLBACK_ID = 'Guest';
+
 /* =========================================================================
  *  ▍第二部分：游戏状态与核心常量
  * ========================================================================= */
@@ -309,6 +337,9 @@ const overTitleEl = document.getElementById('overTitle');
 const overScoreEl = document.getElementById('overScore');
 const overDetailEl = document.getElementById('overDetail');
 const overNoteEl = document.getElementById('overNote');
+const overPlayerEl = document.getElementById('overPlayer');
+const startPlayerEl = document.getElementById('startPlayer');
+const channelLinkEl = document.getElementById('channelLink');
 
 const game = {
   state: 'start',                       // 界面状态：'start' | 'playing' | 'over'
@@ -325,6 +356,7 @@ const game = {
   carrying: null,                       // 当前抓到的宝藏 / 小偷
   thieves: [],                          // 巡逻中的小偷实体数组（该关没有则为空数组）
   score: 0,                             // 当前累计总分（含继承分）
+  finalScore: 0,                        // 终极通关时的最终总分（分享战报用）
   treasures: [],
   popups: []
 };
@@ -418,10 +450,16 @@ function showResult(opts) {
   overDetailEl.textContent = opts.detail;
   overNoteEl.textContent = opts.note;
 
+  // 玩家身份行只在终极通关页展示
+  if (overPlayerEl) overPlayerEl.hidden = !opts.showPlayer;
+
   retryBtnEl.hidden = !opts.showRetry;
   nextBtnEl.hidden = !opts.showNext;
   againBtnEl.hidden = !opts.showAgain;
   shareBtnEl.hidden = !opts.showShare;
+
+  // 每次弹出结算都把分享按钮重置回初始态
+  resetShareButton();
 
   overScreenEl.classList.remove('is-hidden');
 }
@@ -474,6 +512,9 @@ function endGame() {
       return;
     }
 
+    // 终极通关：冻结最终成绩，用于 Webhook 战报推送
+    game.finalScore = game.score;
+
     showResult({
       eyebrow: 'All Chapters Cleared',
       title: 'Victory!',
@@ -481,7 +522,8 @@ function endGame() {
       detail: chapterBreakdown(),
       note: 'Take a screenshot and share your success through the button below.',
       showShare: true,
-      showAgain: true
+      showAgain: true,
+      showPlayer: true
     });
     return;
   }
@@ -1171,6 +1213,9 @@ function bindInput() {
   nextBtnEl.addEventListener('click', function () { startGame(game.levelIndex + 1, game.score); });
   againBtnEl.addEventListener('click', function () { startGame(0, 0); });
 
+  // 终极通关：推送 Discord Webhook 战报
+  shareBtnEl.addEventListener('click', shareToDiscord);
+
   // 切到后台时避免 dt 累积
   document.addEventListener('visibilitychange', function () {
     lastTime = 0;
@@ -1178,7 +1223,236 @@ function bindInput() {
 }
 
 /* =========================================================================
- *  ▍第七部分：启动
+ *  ▍第七部分：Discord 身份（OAuth2 隐式授权）与通关战报分享
+ * ========================================================================= */
+
+/** 当前玩家身份（默认游客兜底，任何情况下都能离线游玩） */
+const player = {
+  id: null,
+  username: PLAYER_FALLBACK_NAME,
+  authenticated: false
+};
+
+/** 读取 sessionStorage 中已缓存的玩家信息 */
+function readCachedPlayer() {
+  try {
+    const raw = window.sessionStorage.getItem(PLAYER_STORAGE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!data || !data.id) return null;
+    return {
+      id: String(data.id),
+      username: data.username || PLAYER_FALLBACK_NAME
+    };
+  } catch (e) {
+    return null;
+  }
+}
+
+function saveCachedPlayer(data) {
+  try {
+    window.sessionStorage.setItem(PLAYER_STORAGE_KEY, JSON.stringify(data));
+  } catch (e) {
+    // 隐私模式 / 存储被禁用时忽略即可，不影响游戏
+  }
+}
+
+/** 解析 location.hash 中的 access_token 或 error（隐式授权回跳） */
+function readHashAuth() {
+  const result = { token: null, error: null };
+  const hash = window.location.hash || '';
+  if (hash.length < 2) return result;
+
+  const pairs = hash.substring(1).split('&');
+  for (let i = 0; i < pairs.length; i++) {
+    const eq = pairs[i].indexOf('=');
+    if (eq === -1) continue;
+    const key = pairs[i].substring(0, eq);
+    const value = decodeURIComponent(pairs[i].substring(eq + 1));
+    if (key === 'access_token') result.token = value;
+    else if (key === 'error') result.error = value;
+  }
+  return result;
+}
+
+/** 清掉地址栏里的 #access_token=... 碎片 */
+function cleanUrlHash() {
+  try {
+    window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+  } catch (e) {
+    // 忽略
+  }
+}
+
+/** 用 access_token 换取玩家资料：GET https://discord.com/api/users/@me */
+async function fetchDiscordUser(accessToken) {
+  try {
+    const res = await fetch('https://discord.com/api/users/@me', {
+      method: 'GET',
+      headers: { Authorization: 'Bearer ' + accessToken }
+    });
+    if (!res.ok) {
+      console.warn('[discord] user profile request failed:', res.status);
+      return null;
+    }
+    const data = await res.json();
+    if (!data || !data.id) return null;
+    return {
+      id: String(data.id),
+      username: data.global_name || data.username || PLAYER_FALLBACK_NAME
+    };
+  } catch (e) {
+    console.warn('[discord] user profile request error:', e);
+    return null;
+  }
+}
+
+/** 刷新开始界面与通关页的身份文案 */
+function renderPlayerLabels() {
+  const idText = player.id || PLAYER_FALLBACK_ID;
+  if (startPlayerEl) {
+    startPlayerEl.textContent = 'Miner: ' + player.username + ' (ID: ' + idText + ')';
+  }
+  if (overPlayerEl) {
+    overPlayerEl.textContent = 'Player: ' + player.username + ' | ID: ' + idText;
+  }
+}
+
+/** 应用玩家身份；失败时传 null 即回退游客 */
+function applyPlayer(data) {
+  const valid = !!(data && data.id);
+  player.id = valid ? String(data.id) : null;
+  player.username = valid && data.username ? data.username : PLAYER_FALLBACK_NAME;
+  player.authenticated = valid;
+  renderPlayerLabels();
+}
+
+/** 仅在部署域名下自动跳授权，避免本地 file:// / localhost 反复跳转 */
+function canAutoAuthorize() {
+  try {
+    const target = new URL(DISCORD_REDIRECT_URI);
+    return window.location.protocol === target.protocol && window.location.host === target.host;
+  } catch (e) {
+    return false;
+  }
+}
+
+function redirectToDiscordAuth() {
+  try {
+    window.sessionStorage.setItem(PLAYER_AUTH_FLAG_KEY, '1');
+  } catch (e) {
+    // 忽略
+  }
+  window.location.href = DISCORD_AUTH_URL;
+}
+
+/**
+ * 启动流程：缓存 -> hash 中的 token -> 自动跳授权 -> 游客兜底
+ */
+async function initDiscordAuth() {
+  const cached = readCachedPlayer();
+  if (cached) {
+    applyPlayer(cached);
+    return;
+  }
+
+  const auth = readHashAuth();
+
+  if (auth.token) {
+    cleanUrlHash();
+    const user = await fetchDiscordUser(auth.token);
+    if (user) {
+      saveCachedPlayer(user);
+      applyPlayer(user);
+    } else {
+      applyPlayer(null);
+    }
+    return;
+  }
+
+  if (auth.error) cleanUrlHash();
+
+  let alreadyTried = false;
+  try {
+    alreadyTried = window.sessionStorage.getItem(PLAYER_AUTH_FLAG_KEY) === '1';
+  } catch (e) {
+    alreadyTried = false;
+  }
+
+  if (!auth.error && !alreadyTried && canAutoAuthorize()) {
+    redirectToDiscordAuth();
+    return;
+  }
+
+  applyPlayer(null);
+}
+
+/* ------------------------- 通关战报分享 ------------------------- */
+
+function resetShareButton() {
+  if (!shareBtnEl) return;
+  shareBtnEl.disabled = false;
+  shareBtnEl.textContent = 'Share to Discord';
+  if (channelLinkEl) channelLinkEl.hidden = true;
+}
+
+/** 构造 Discord Rich Embed 战报 payload */
+function buildSharePayload(totalScore) {
+  const mention = player.id ? '<@' + player.id + '>' : player.username;
+  const content = player.id
+    ? mention +
+      ' Congratulations! You have successfully conquered all chapters of Gold Miner! Total treasure secured! 🏆'
+    : 'Congratulations Adventurer! You have conquered all chapters of Gold Miner! 🏆';
+
+  return {
+    content: content,
+    embeds: [
+      {
+        title: '🏆 Gold Miner: Ultimate Victory',
+        description:
+          '**Player:** ' + mention + '\n' +
+          '**Total Score:** ' + formatNumber(totalScore) + ' pts\n' +
+          '**Status:** Certified Master Miner ⛏️',
+        color: 0xFFD700,
+        image: { url: DISCORD_SHARE_IMAGE },
+        footer: { text: 'Gold Miner Challenge | Discord Community' },
+        timestamp: new Date().toISOString()
+      }
+    ]
+  };
+}
+
+/** 点击 Share to Discord：POST 到 Webhook，并处理中 / 成功 / 失败三态 */
+async function shareToDiscord() {
+  if (!shareBtnEl || shareBtnEl.disabled) return;
+
+  const totalScore = game.finalScore || game.score;
+
+  shareBtnEl.disabled = true;
+  shareBtnEl.textContent = 'Sharing...';
+  if (channelLinkEl) channelLinkEl.hidden = true;
+
+  try {
+    const res = await fetch(DISCORD_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(buildSharePayload(totalScore))
+    });
+
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+
+    shareBtnEl.textContent = 'Shared Successfully! 🎉';
+    if (channelLinkEl) channelLinkEl.hidden = false;
+  } catch (err) {
+    console.warn('[discord] webhook post failed:', err);
+    shareBtnEl.disabled = false;
+    shareBtnEl.textContent = 'Failed to share';
+    if (channelLinkEl) channelLinkEl.hidden = false;
+  }
+}
+
+/* =========================================================================
+ *  ▍第八部分：启动
  * ========================================================================= */
 
 startBtnEl.disabled = true;
@@ -1189,4 +1463,5 @@ preloadArt(function () {
 resizeCanvas();
 resetLevel(LEVELS[0]);
 bindInput();
+initDiscordAuth();
 window.requestAnimationFrame(loop);
