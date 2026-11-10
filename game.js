@@ -54,7 +54,34 @@ const PICKAXE_ART = {
 const HOOK = { hitRadius: 18 };
 
 /* -------------------------------------------------------------------------
- *  五、三种宝藏的基础属性
+ *  四、小偷巡逻配置（仅在第二关、第三关出现，轨道配置见各关 thieves 数组）
+ *  src              : 切图路径
+ *  y                : 默认巡逻高度（各关可用 thieves[i].y 单独覆盖）
+ *  width / height   : 绘制宽高（像素）
+ *  speed            : 左右往返巡逻速度（像素 / 秒）
+ *  hitRadius        : 碰撞半径（与矿镐半径相加做圆碰撞）
+ *  pullSpeed        : 被抓后拉回速度（像素 / 秒）
+ *  penalty          : 被抓回顶部后扣除的分数
+ *  penaltyTextLife  : 扣分飘字总时长（秒）
+ *  penaltyTextFade  : 扣分飘字末尾淡出时长（秒）
+ *  penaltyTextRise  : 扣分飘字每秒上浮像素
+ * ---------------------------------------------------------------------- */
+const THIEF = {
+  src: 'images/thief.png',
+  y: 350,
+  width: 30,
+  height: 38,
+  speed: 150,
+  hitRadius: 18,
+  pullSpeed: 620,
+  penalty: 500,
+  penaltyTextLife: 2.8,
+  penaltyTextFade: 0.8,
+  penaltyTextRise: 26
+};
+
+/* -------------------------------------------------------------------------
+ *  五、五种宝藏的基础属性
  *  src           : 切图路径
  *  value         : 拉回后加的分值
  *  pullSpeed     : 抓住后的回收速度（像素 / 秒，越小越沉）
@@ -71,14 +98,14 @@ const TREASURE_TYPES = {
   },
   medium: {
     src: 'images/stone2.png',
-    value: 200,
+    value: 100,
     pullSpeed: 520,
     hitRadius: 24,
     displayHeight: 58
   },
   large: {
     src: 'images/stone1.png',
-    value: 100,
+    value: 50,
     pullSpeed: 110,
     hitRadius: 36,
     displayHeight: 84
@@ -100,10 +127,11 @@ const TREASURE_TYPES = {
 };
 
 /* -------------------------------------------------------------------------
- *  六、关卡数据
+ *  七、关卡数据
  *  name      : 右上角 HUD 显示的关卡名
  *  timeLimit : 本关限时（秒）
- *  target    : 本关通关目标分值（得分 >= target 视为通关）
+ *  target    : 本关通关目标分值（累计总分 >= target 视为通关）
+ *  thief     : 小偷轨道数组（不写该字段则不出现小偷，第一关就没有）
  *  treasures : 宝藏列表，只改 x / y 即可移动宝藏
  * ---------------------------------------------------------------------- */
 
@@ -144,6 +172,11 @@ const LEVEL_2 = {
   name: 'Chapter 2 - Target: 3,000',
   timeLimit: 90,
   target: 3000,
+  // ---- 小偷轨道：y = 轨道高度，dir: 1 从左侧边缘向右，-1 从右侧边缘向左 ----
+  thieves: [
+    { y: 350, dir: 1 },
+    { y: 350, dir: -1 }
+  ],
   treasures: [
     // ---- 大型石头 ×10：穿插占据偏上与中部（主要障碍）----
     { grade: 'large', x: 120, y: 290 },
@@ -174,6 +207,13 @@ const LEVEL_3 = {
   name: 'Chapter 3 - Target: 5,000',
   timeLimit: 90,
   target: 5000,
+  // ---- 小偷轨道：中层 y=350 两个，深层 y=550 两个，对向巡逻 ----
+  thieves: [
+    { y: 350, dir: 1 },
+    { y: 350, dir: -1 },
+    { y: 550, dir: 1 },
+    { y: 550, dir: -1 }
+  ],
   treasures: [
     // ---- 大石障碍 ×10：均匀铺在中上层 ----
     { grade: 'large',  x: 110, y: 220 },
@@ -213,7 +253,7 @@ const LEVEL_3 = {
 const LEVELS = [LEVEL_1, LEVEL_2, LEVEL_3];
 
 /* -------------------------------------------------------------------------
- *  七、计时警戒与运行时资源表（一般不需要改）
+ *  八、计时警戒与运行时资源表（一般不需要改）
  *  （每关限时请看上面 LEVEL_1 / LEVEL_2 / LEVEL_3 的 timeLimit）
  * ---------------------------------------------------------------------- */
 const TIME_WARNING = 10;  // 剩余时间进入警戒的阈值（秒），HUD 变红
@@ -221,6 +261,7 @@ const TIME_WARNING = 10;  // 剩余时间进入警戒的阈值（秒），HUD �
 /** 所有需要预加载的切图 */
 const ART_SOURCES = {
   pickaxe: PICKAXE_ART.src,
+  thief: THIEF.src,
   small: TREASURE_TYPES.small.src,
   medium: TREASURE_TYPES.medium.src,
   large: TREASURE_TYPES.large.src,
@@ -229,7 +270,15 @@ const ART_SOURCES = {
 };
 
 /** 已加载完成的图片：key -> HTMLImageElement */
-const ART = { pickaxe: null, small: null, medium: null, large: null, huge: null, ultimate: null };
+const ART = {
+  pickaxe: null,
+  thief: null,
+  small: null,
+  medium: null,
+  large: null,
+  huge: null,
+  ultimate: null
+};
 
 /** 图片加载失败时的占位色（保证任何情况下都不会出现空白） */
 const TREASURE_FALLBACK = {
@@ -265,18 +314,39 @@ const game = {
   state: 'start',                       // 界面状态：'start' | 'playing' | 'over'
   levelIndex: 0,                        // 当前关卡索引：0/1/2 = 第一/二/三关
   level: LEVELS[0],                     // 当前关卡配置对象
-  chapterScores: [],                    // 各关成绩（终极结算时汇总）
+  baseScore: 0,                         // 本关开始时的继承分（Try Again 回滚目标）
+  chapterScores: [],                    // 各关净得分（终极结算时汇总明细）
   timeLeft: LEVELS[0].timeLimit,        // 剩余时间（秒）
   mode: 'swing',                        // 'swing' | 'extend' | 'retract'
   angle: -ROPE.angleLimit * DEG,        // 绳子与竖直方向夹角（弧度）
   dir: 1,                               // 摆动方向：1 向右，-1 向左
   length: ROPE.minLength,               // 当前绳长
   retractSpeed: ROPE.idleRetractSpeed,  // 当前收回速度
-  carrying: null,                       // 当前抓到的宝藏
-  score: 0,
+  carrying: null,                       // 当前抓到的宝藏 / 小偷
+  thieves: [],                          // 巡逻中的小偷实体数组（该关没有则为空数组）
+  score: 0,                             // 当前累计总分（含继承分）
   treasures: [],
   popups: []
 };
+
+/**
+ * 按关卡配置生成小偷实体数组
+ * - 每条配置 { y, dir }：y 为轨道高度，dir = 1 从左侧边缘向右，-1 从右侧边缘向左
+ * - 未配置 thieves 的关卡返回空数组（第一关即无小偷）
+ */
+function createThieves(level) {
+  const tracks = level.thieves || [];
+  const halfW = THIEF.width / 2;
+
+  return tracks.map(function (track) {
+    const dir = track.dir < 0 ? -1 : 1;
+    return {
+      x: dir === 1 ? halfW : VIEW.width - halfW,
+      y: typeof track.y === 'number' ? track.y : THIEF.y,
+      dir: dir
+    };
+  });
+}
 
 function resetLevel(level) {
   game.level = level;
@@ -286,7 +356,8 @@ function resetLevel(level) {
   game.length = ROPE.minLength;
   game.retractSpeed = ROPE.idleRetractSpeed;
   game.carrying = null;
-  game.score = 0;
+  game.thieves = createThieves(level);
+  game.score = game.baseScore;
   game.popups = [];
   game.treasures = level.treasures.map(function (t) {
     const type = TREASURE_TYPES[t.grade] || TREASURE_TYPES.small;
@@ -310,11 +381,20 @@ function formatNumber(n) {
   return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
-function startGame(levelIndex) {
+/**
+ * 分数继承 / 回滚的唯一入口
+ *   startGame(idx, baseScore)
+ *   - 开始新游戏        : startGame(0, 0)
+ *   - 进入下一关        : startGame(idx + 1, game.score)   // 继承当前累计分
+ *   - 失败重来本关      : startGame(idx, game.baseScore)   // 回滚到本关起步分
+ */
+function startGame(levelIndex, baseScore) {
   const idx = Math.max(0, Math.min(Math.round(levelIndex) || 0, LEVELS.length - 1));
+  const inherited = typeof baseScore === 'number' && isFinite(baseScore) ? baseScore : 0;
 
   game.levelIndex = idx;
-  // 从第一关重新开始时，清空历史关卡成绩
+  game.baseScore = Math.max(0, Math.round(inherited));
+  // 从第一关重新开始时，清空历史关卡明细
   if (idx === 0) game.chapterScores = [];
 
   resetLevel(LEVELS[idx]);
@@ -374,7 +454,8 @@ function endGame() {
   const passed = game.score >= level.target;
   const chapterLabel = 'Chapter ' + (idx + 1) + ' Complete';
 
-  game.chapterScores[idx] = game.score;
+  // 记录本关净得分（用于终极结算的分关明细）
+  game.chapterScores[idx] = game.score - game.baseScore;
 
   // ---- 最后一关：达成目标进入终极结算，否则重来本关 ----
   if (isFinalChapter) {
@@ -471,11 +552,49 @@ function grabTreasure(treasure) {
   treasure.y = tip.y;
 }
 
+/**
+ * 抓取第 index 个小偷：实体立即从巡逻数组中移除（地图上立刻消失），
+ * 转由 game.carrying 接管随钩子一起向上拉取
+ */
+function grabThief(index) {
+  const t = game.thieves[index];
+  if (!t) return;
+
+  game.carrying = {
+    isThief: true,
+    x: t.x,
+    y: t.y,
+    dir: t.dir,
+    pullSpeed: THIEF.pullSpeed
+  };
+  game.thieves.splice(index, 1);
+  game.mode = 'retract';
+  game.retractSpeed = THIEF.pullSpeed;
+}
+
 function collectTreasure() {
   const t = game.carrying;
   game.carrying = null;
   if (!t) return;
 
+  // ---- 小偷：扣分 + 红色警示飘字（不会重新刷新，抓掉一个少一个）----
+  if (t.isThief) {
+    game.score = Math.max(0, game.score - THIEF.penalty);
+    game.popups.push({
+      x: VIEW.width / 2,
+      y: 300,
+      text: 'Thief stole ' + THIEF.penalty + ' pts!',
+      life: THIEF.penaltyTextLife,
+      maxLife: THIEF.penaltyTextLife,
+      fade: THIEF.penaltyTextFade,
+      rise: THIEF.penaltyTextRise,
+      color: '#ff6b5e',
+      size: 34
+    });
+    return;
+  }
+
+  // ---- 普通宝藏：加分 + 金色飘字 ----
   game.score += t.value;
 
   const idx = game.treasures.indexOf(t);
@@ -488,6 +607,40 @@ function collectTreasure() {
     life: 0.9,
     maxLife: 0.9
   });
+}
+
+/** 小偷巡逻：每个实体在自己轨道上左右匀速往返，仅在游戏进行中推进 */
+function updateThieves(dt) {
+  const halfW = THIEF.width / 2;
+
+  for (let i = 0; i < game.thieves.length; i++) {
+    const t = game.thieves[i];
+    t.x += t.dir * THIEF.speed * dt;
+
+    if (t.x <= halfW) {
+      t.x = halfW;
+      t.dir = 1;
+    } else if (t.x >= VIEW.width - halfW) {
+      t.x = VIEW.width - halfW;
+      t.dir = -1;
+    }
+  }
+}
+
+/** 矿镐是否命中某个巡逻小偷；命中即抓走并从巡逻数组移除 */
+function tryGrabThief(x, y) {
+  const reach = THIEF.hitRadius + HOOK.hitRadius;
+
+  for (let i = 0; i < game.thieves.length; i++) {
+    const t = game.thieves[i];
+    const dx = t.x - x;
+    const dy = t.y - y;
+    if (dx * dx + dy * dy <= reach * reach) {
+      grabThief(i);
+      return true;
+    }
+  }
+  return false;
 }
 
 function update(dt) {
@@ -520,6 +673,10 @@ function update(dt) {
       game.length += step;
 
       const tip = getTip();
+
+      // 巡逻中的小偷优先判定（它会挡住后方的宝藏）
+      if (tryGrabThief(tip.x, tip.y)) break;
+
       const hit = findTreasureAt(tip.x, tip.y);
       if (hit) {
         grabTreasure(hit);
@@ -554,10 +711,13 @@ function update(dt) {
     }
   }
 
+  // 小偷巡逻（暂停 / 结算时 update 提前 return，因此自动停止移动）
+  updateThieves(dt);
+
   for (let i = game.popups.length - 1; i >= 0; i--) {
     const p = game.popups[i];
     p.life -= dt;
-    p.y -= 46 * dt;
+    p.y -= (p.rise || 46) * dt;
     if (p.life <= 0) game.popups.splice(i, 1);
   }
 }
@@ -658,6 +818,43 @@ function drawTreasures() {
     const t = game.treasures[i];
     if (t === game.carrying) continue;
     drawTreasure(t);
+  }
+}
+
+/** 绘制小偷（dir 用于左右翻转朝向） */
+function drawThiefAt(x, y, dir) {
+  const img = ART.thief;
+  const w = THIEF.width;
+  const h = THIEF.height;
+
+  ctx.save();
+  ctx.translate(x, y);
+
+  // 小偷脚下的一点阴影，增加立体感
+  ctx.beginPath();
+  ctx.ellipse(0, h * 0.46, w * 0.42, h * 0.1, 0, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.32)';
+  ctx.fill();
+
+  // 切图默认朝向左侧，向右巡逻时水平翻转，保证朝向与移动方向一致
+  ctx.scale(dir > 0 ? -1 : 1, 1);
+  if (img) {
+    ctx.drawImage(img, -w / 2, -h / 2, w, h);
+  } else {
+    ctx.beginPath();
+    ctx.arc(0, 0, h * 0.4, 0, Math.PI * 2);
+    ctx.fillStyle = '#e05c5c';
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+/** 绘制全部巡逻中的小偷 */
+function drawThieves() {
+  for (let i = 0; i < game.thieves.length; i++) {
+    const t = game.thieves[i];
+    drawThiefAt(t.x, t.y, t.dir);
   }
 }
 
@@ -835,16 +1032,20 @@ function drawPopups() {
   ctx.save();
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.font = '700 26px "PingFang SC", "Microsoft YaHei", system-ui, sans-serif';
 
   for (let i = 0; i < game.popups.length; i++) {
     const p = game.popups[i];
-    const alpha = Math.max(0, Math.min(1, p.life / p.maxLife));
+    // fade 存在时：先保持满不透明，最后 fade 秒内平滑淡出
+    const alpha = Math.max(0, Math.min(1, p.life / (p.fade || p.maxLife)));
     ctx.globalAlpha = alpha;
-    ctx.fillStyle = '#ffd98a';
+    ctx.font = '700 ' + (p.size || 26) + 'px "PingFang SC", "Microsoft YaHei", system-ui, sans-serif';
+    ctx.fillStyle = p.color || '#ffd98a';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+    ctx.shadowBlur = 6;
     ctx.fillText(p.text, p.x, p.y);
   }
 
+  ctx.shadowBlur = 0;
   ctx.globalAlpha = 1;
   ctx.restore();
 }
@@ -854,6 +1055,7 @@ function render() {
 
   drawBackground();
   drawTreasures();
+  drawThieves();
 
   const tip = getTip();
 
@@ -861,8 +1063,14 @@ function render() {
   drawRope(tip);
   drawPickaxe(tip);
 
-  // 已抓取的宝藏绘制在矿镐之上
-  if (game.carrying) drawTreasure(game.carrying);
+  // 已抓取的宝藏 / 小偷绘制在矿镐之上
+  if (game.carrying) {
+    if (game.carrying.isThief) {
+      drawThiefAt(game.carrying.x, game.carrying.y, game.carrying.dir || 1);
+    } else {
+      drawTreasure(game.carrying);
+    }
+  }
 
   // HUD 与飘字仅在游戏进行中显示，避免与开始 / 结算界面叠加
   if (game.state === 'playing') {
@@ -957,11 +1165,11 @@ function bindInput() {
   window.addEventListener('resize', resizeCanvas);
   window.addEventListener('orientationchange', resizeCanvas);
 
-  // 开始 / 重打本关 / 下一关 / 从头再来
-  startBtnEl.addEventListener('click', function () { startGame(0); });
-  retryBtnEl.addEventListener('click', function () { startGame(game.levelIndex); });
-  nextBtnEl.addEventListener('click', function () { startGame(game.levelIndex + 1); });
-  againBtnEl.addEventListener('click', function () { startGame(0); });
+  // 开始 / 重打本关 / 下一关 / 从头再来（分数继承与回滚都在 startGame 里统一处理）
+  startBtnEl.addEventListener('click', function () { startGame(0, 0); });
+  retryBtnEl.addEventListener('click', function () { startGame(game.levelIndex, game.baseScore); });
+  nextBtnEl.addEventListener('click', function () { startGame(game.levelIndex + 1, game.score); });
+  againBtnEl.addEventListener('click', function () { startGame(0, 0); });
 
   // 切到后台时避免 dt 累积
   document.addEventListener('visibilitychange', function () {
