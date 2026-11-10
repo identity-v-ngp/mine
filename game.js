@@ -202,9 +202,9 @@ const LEVEL_2 = {
   ]
 };
 
-/* ===== 第三关：25 个宝藏（10 大 + 8 中 + 6 小 + 1 终极），目标 5,000 分 ===== */
+/* ===== 第三关：目标 8,000 分（通关判定见下方 target 字段） ===== */
 const LEVEL_3 = {
-  name: 'Chapter 3 - Target: 5,000',
+  name: 'Chapter 3 - Target: 8,000',
   timeLimit: 60,
   target: 8000,
   // ---- 小偷轨道：中层 y=350 两个，深层 y=550 两个，对向巡逻 ----
@@ -1401,21 +1401,21 @@ function buildSharePayload(totalScore) {
   const mention = player.id ? '<@' + player.id + '>' : player.username;
   const content = player.id
     ? mention +
-      ' Congratulations! You have successfully conquered all chapters of Gold Miner! Total treasure secured! 🏆'
-    : 'Congratulations Adventurer! You have conquered all chapters of Gold Miner! 🏆';
+      ' Congratulations! You have successfully conquered all chapters of Abyssal Treasure Digger! Total treasure secured! 🏆'
+    : 'Congratulations Adventurer! You have conquered all chapters of Abyssal Treasure Digger! 🏆';
 
   return {
     content: content,
     embeds: [
       {
-        title: '🏆 Gold Miner: Ultimate Victory',
+        title: '🏆 Abyssal Treasure Digger: Ultimate Victory',
         description:
           '**Player:** ' + mention + '\n' +
           '**Total Score:** ' + formatNumber(totalScore) + ' pts\n' +
           '**Status:** Certified Master Miner ⛏️',
         color: 0xFFD700,
         image: { url: DISCORD_SHARE_IMAGE },
-        footer: { text: 'Gold Miner Challenge | Discord Community' },
+        footer: { text: 'Abyssal Treasure Digger | Identity V NGP' },
         timestamp: new Date().toISOString()
       }
     ]
