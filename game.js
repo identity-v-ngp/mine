@@ -115,7 +115,7 @@ const TREASURE_TYPES = {
     value: 1000,
     pullSpeed: 160,
     hitRadius: 39,
-    displayHeight: 88
+    displayHeight: 60
   },
   ultimate: {
     src: 'images/treasure3.png',
@@ -170,7 +170,7 @@ const LEVEL_1 = {
 /* ===== 第二关：16 个宝藏（10 大 + 4 小 + 2 特大），目标 3,000 分 ===== */
 const LEVEL_2 = {
   name: 'Chapter 2 - Target: 3,000',
-  timeLimit: 90,
+  timeLimit: 60,
   target: 3000,
   // ---- 小偷轨道：y = 轨道高度，dir: 1 从左侧边缘向右，-1 从右侧边缘向左 ----
   thieves: [
@@ -205,8 +205,8 @@ const LEVEL_2 = {
 /* ===== 第三关：25 个宝藏（10 大 + 8 中 + 6 小 + 1 终极），目标 5,000 分 ===== */
 const LEVEL_3 = {
   name: 'Chapter 3 - Target: 5,000',
-  timeLimit: 90,
-  target: 5000,
+  timeLimit: 60,
+  target: 8000,
   // ---- 小偷轨道：中层 y=350 两个，深层 y=550 两个，对向巡逻 ----
   thieves: [
     { y: 350, dir: 1 },
