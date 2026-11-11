@@ -295,7 +295,8 @@ const TREASURE_FALLBACK = {
  *  DISCORD_REDIRECT_URI   : 授权回调地址（必须与 Discord 后台配置一致）
  *  DISCORD_API_RELAY_URL  : 通关战报推送的 Cloudflare 安全中转地址
  *  DISCORD_CHANNEL_URL    : 分享成功后的频道跳转地址
- *  DISCORD_SHARE_IMAGE    : 战报卡片图片
+ *  DISCORD_SHARE_IMAGE    : 通关战报卡片图片
+ *  DISCORD_DEFEAT_SHARE_IMAGE : 第三关失败战报卡片图片
  * ---------------------------------------------------------------------- */
 const DISCORD_CLIENT_ID = '1569624792594653204';
 const DISCORD_REDIRECT_URI = 'https://identity-v-ngp.github.io/mine/';
@@ -304,6 +305,8 @@ const DISCORD_CHANNEL_URL =
   'https://discord.com/channels/611028792911200256/1569619127012827146';
 const DISCORD_SHARE_IMAGE =
   'https://cdn.discordapp.com/attachments/1286509730264776734/1569620630578397254/card.jpg?ex=6af41ea0&is=6af2cd20&hm=7af1b6631d8f479768ed5c671d8707f30c1a9163d3b2de03d4bc86849b6393ec&';
+const DISCORD_DEFEAT_SHARE_IMAGE =
+  'https://cdn.discordapp.com/attachments/1286509730264776734/1570013032023728189/card2.jpg?ex=6af58c14&is=6af43a94&hm=4f5ffb67c64cb75c3b128e12db08cd76a56b7a7b0921c1878a43ca00266e8d9d&';
 
 /** 隐式授权地址（response_type=token，无需 client secret） */
 const DISCORD_AUTH_URL =
@@ -355,7 +358,8 @@ const game = {
   carrying: null,                       // 当前抓到的宝藏 / 小偷
   thieves: [],                          // 巡逻中的小偷实体数组（该关没有则为空数组）
   score: 0,                             // 当前累计总分（含继承分）
-  finalScore: 0,                        // 终极通关时的最终总分（分享战报用）
+  finalScore: 0,                        // 结算时的最终总分（分享战报用）
+  shareMode: 'victory',                 // 分享类型：'victory' 通关战报 | 'defeat' 第三关失败战报
   treasures: [],
   popups: []
 };
@@ -497,6 +501,10 @@ function endGame() {
   // ---- 最后一关：达成目标进入终极结算，否则重来本关 ----
   if (isFinalChapter) {
     if (!passed) {
+      // 第三关挑战失败：同样可以分享止步战报（失败卡片）
+      game.finalScore = game.score;
+      game.shareMode = 'defeat';
+
       showResult({
         eyebrow: chapterLabel,
         title: 'Challenge Failed',
@@ -506,6 +514,7 @@ function endGame() {
           ' \u00b7 Short by ' + formatNumber(level.target - game.score),
         note: 'The final vault is still sealed. Try again for the ' +
           formatNumber(level.target) + ' target.',
+        showShare: true,
         showRetry: true
       });
       return;
@@ -513,6 +522,7 @@ function endGame() {
 
     // 终极通关：冻结最终成绩，用于 Webhook 战报推送
     game.finalScore = game.score;
+    game.shareMode = 'victory';
 
     showResult({
       eyebrow: 'All Chapters Cleared',
@@ -1398,6 +1408,29 @@ function resetShareButton() {
 /** 构造 Discord Rich Embed 战报 payload */
 function buildSharePayload(totalScore) {
   const mention = player.id ? '<@' + player.id + '>' : player.username;
+
+  // ---- 第三关挑战失败战报（card2.jpg）----
+  if (game.shareMode === 'defeat') {
+    return {
+      content:
+        mention + ' 💥 So close! Defeated on Stage 3 with ' +
+        formatNumber(totalScore) + ' pts! Who can beat this level?!',
+      embeds: [
+        {
+          title: '💥 Abyssal Treasure Digger: Stage 3 Defeat',
+          description:
+            '**Player:** ' + mention + '\n' +
+            '**Total Score:** ' + formatNumber(totalScore) + ' pts\n' +
+            '**Status:** Fell at Stage 3 ⛏️',
+          color: 0xFFD700,
+          image: { url: DISCORD_DEFEAT_SHARE_IMAGE },
+          footer: { text: 'Abyssal Treasure Digger | Identity V NGP' },
+          timestamp: new Date().toISOString()
+        }
+      ]
+    };
+  }
+
   const content = player.id
     ? mention +
       ' Congratulations! You have successfully conquered all chapters of Abyssal Treasure Digger! Total treasure secured! 🏆'
