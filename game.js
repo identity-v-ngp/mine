@@ -290,17 +290,16 @@ const TREASURE_FALLBACK = {
 };
 
 /* -------------------------------------------------------------------------
- *  九、Discord 集成配置（OAuth2 隐式授权登录 + 通关 Webhook 推送）
- *  DISCORD_CLIENT_ID     : OAuth2 应用 Client ID
- *  DISCORD_REDIRECT_URI  : 授权回调地址（必须与 Discord 后台配置一致）
- *  DISCORD_WEBHOOK_URL   : 通关战报推送的 Webhook
- *  DISCORD_CHANNEL_URL   : 分享成功后的频道跳转地址
- *  DISCORD_SHARE_IMAGE   : 战报卡片图片
+ *  九、Discord 集成配置（OAuth2 隐式授权登录 + 通关战报推送）
+ *  DISCORD_CLIENT_ID      : OAuth2 应用 Client ID
+ *  DISCORD_REDIRECT_URI   : 授权回调地址（必须与 Discord 后台配置一致）
+ *  DISCORD_API_RELAY_URL  : 通关战报推送的 Cloudflare 安全中转地址
+ *  DISCORD_CHANNEL_URL    : 分享成功后的频道跳转地址
+ *  DISCORD_SHARE_IMAGE    : 战报卡片图片
  * ---------------------------------------------------------------------- */
 const DISCORD_CLIENT_ID = '1569624792594653204';
 const DISCORD_REDIRECT_URI = 'https://identity-v-ngp.github.io/mine/';
-const DISCORD_WEBHOOK_URL =
-  'https://discord.com/api/webhooks/1569621677338402866/7OZ2ajXsABkSAisIM4X0sjLrZxrzoVr8xip15bTrKEUsxRymv3OyM8SbIXPL0wgpK8Fb';
+const DISCORD_API_RELAY_URL = 'https://mine.acaciads.workers.dev/';
 const DISCORD_CHANNEL_URL =
   'https://discord.com/channels/611028792911200256/1569619127012827146';
 const DISCORD_SHARE_IMAGE =
@@ -1432,7 +1431,7 @@ async function shareToDiscord() {
   if (channelLinkEl) channelLinkEl.hidden = true;
 
   try {
-    const res = await fetch(DISCORD_WEBHOOK_URL, {
+    const res = await fetch(DISCORD_API_RELAY_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(buildSharePayload(totalScore))
@@ -1443,7 +1442,7 @@ async function shareToDiscord() {
     shareBtnEl.textContent = 'Shared Successfully! 🎉';
     if (channelLinkEl) channelLinkEl.hidden = false;
   } catch (err) {
-    console.warn('[discord] webhook post failed:', err);
+    console.warn('[discord] relay post failed:', err);
     shareBtnEl.disabled = false;
     shareBtnEl.textContent = 'Failed to share';
     if (channelLinkEl) channelLinkEl.hidden = false;
