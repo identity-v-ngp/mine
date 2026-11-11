@@ -1422,7 +1422,7 @@ function buildSharePayload(totalScore) {
             '**Player:** ' + mention + '\n' +
             '**Total Score:** ' + formatNumber(totalScore) + ' pts\n' +
             '**Status:** Fell at Stage 3 ⛏️',
-          color: 0xFFD700,
+          color: 0xD32F2F,
           image: { url: DISCORD_DEFEAT_SHARE_IMAGE },
           footer: { text: 'Abyssal Treasure Digger | Identity V NGP' },
           timestamp: new Date().toISOString()
