@@ -1443,7 +1443,8 @@ function buildSharePayload(totalScore) {
         title: '🏆 Abyssal Treasure Digger: Ultimate Victory',
         description:
           '**Player:** ' + mention + '\n' +
-          '**Total Score:** ' + formatNumber(totalScore) + ' pts\n',
+          '**Total Score:** ' + formatNumber(totalScore) + ' pts\n' +
+          '**Status:** Master Excavator 👑',
         color: 0xFFD700,
         image: { url: DISCORD_SHARE_IMAGE },
         footer: { text: 'Abyssal Treasure Digger | Identity V NGP' },
